@@ -427,8 +427,11 @@ SHELL_CONSOLE_MAIN(){
 最后在这段shell的头部加上：
 ```sh
 trap "echo&&SHELL_CONSOLE" SIGINT
+RGB="254;228;208"
+COLOR="\033[1;38;2;${RGB}m"
 ```
-这样可以确保shell不被杀死，每次收到ctrl-c信号都会终止当前命令并跳转到SHELL_CONSOLE。
+第一行可以确保shell不被杀死，每次收到ctrl-c信号都会终止当前命令并跳转到SHELL_CONSOLE。
+二三行是shell输出颜色的定义，为rgb十进制值。
 在尾部调用一下SHELL_CONSOLE函数，就完了。
 ### 仿windows安装界面用户许可：
 没啥好说的，直接上代码就是了：
