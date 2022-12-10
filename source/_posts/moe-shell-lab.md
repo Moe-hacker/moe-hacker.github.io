@@ -426,7 +426,6 @@ SHELL_CONSOLE_MAIN(){
 ```
 最后在这段shell的头部加上：
 ```sh
-
 trap "echo&&SHELL_CONSOLE" SIGINT
 ```
 这样可以确保shell不被杀死，每次收到ctrl-c信号都会终止当前命令并跳转到SHELL_CONSOLE。
