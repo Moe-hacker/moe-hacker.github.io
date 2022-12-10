@@ -132,6 +132,10 @@ printf '\e[4 q'
 read无论读到什么东西加回车都会将结果记录并正常退出。
 但是，读到EOF却未换行会返回1。
 可以read后用$?的值是否为0来作为条件进行捕获。
+当然read逐字读取时不适用，但是我们还有方法专门针对逐字读取：
+```sh
+while :; do read -N 1 key&&if [[ ${key} == $(printf "\004") ]];then echo CTRL-D;fi; done
+```
 似乎挺没用的。
 (termux-container将会利用这一特性)
 ### 网易云歌曲名称格式化：
