@@ -255,156 +255,62 @@ trap "" SIGINT
 SHELL_CONSOLE()函数建议照抄，原本是以Apache2协议开源的，不过猫猫也不介意用MIT协议在这里重复开源一遍：
 ```sh
 SHELL_CONSOLE(){
-  [[ -e $HOME/.shell_history ]]||touch $HOME/.shell_history
   HISTORY=0
+  COMMAND=""
   while :
   do
+    HISTORY_LINES=$(awk 'END{print NR}' $HOME/.shell_history)
+    HISTORY_LINES=$(( ${HISTORY_LINES}-1))
     SIZE=$(stty size|awk '{printf $2}')
     stty erase '^?'
     printf "${COLOR}"
-    read -N 1 -s -p "Console > " COMMAND0
+    printf "\033[?25l"
+    printf "\r"
+    printf "\033[1G$(yes " "|sed $SIZE'q'|tr -d '\n')"
+    printf "\033[1GConsole > ${COMMAND}"
+    printf "\033[?25h"
+    read -s -N1 COMMAND0
     if [[ ${COMMAND0} == $(echo -e "\004") ]];then
       echo -e "\n\nExit.\033[0m"&&exit
     fi
-    if [[ $(echo $COMMAND0|hexdump|head -n1|awk '{print $2}') == "000a" ]]&&[[ $COMMAND0 != " " ]];then
+    if [[ $(echo ${COMMAND0}|hexdump|head -n1|awk '{print $2}') == "000a" ]]&&[[ ${COMMAND0} != " " ]];then
       echo
+      SHELL_CONSOLE_MAIN ${COMMAND}
+      COMMAND=""
       continue
     fi
-    if [[ $COMMAND0 == $(printf "\033") ]];then
+    if [[ $(echo ${COMMAND0}|hexdump|head -n1|awk '{print $2}') == "0a7f" ]];then
+      COMMAND=${COMMAND%?}
+      continue
+    elif [[ $(echo ${COMMAND0}|hexdump|head -n1|awk '{print $2}') == "0a08" ]];then
+      COMMAND=${COMMAND%?}
+      continue
+    elif [[ ${COMMAND0} == $(printf "\033") ]];then
       read -s -N 2 COMMAND1
-      HISTORY=0
       if [[ ${COMMAND1} == "[A" ]];then
-        HISTORY_LINES=$(awk 'END{print NR}' $HOME/.shell_history)
-        HISTORY_LINES=$(( ${HISTORY_LINES}-1))
-        if (($HISTORY <= ${HISTORY_LINES} ));then
+        if (($HISTORY <= ${HISTORY_LINES}));then
           HISTORY=$(($HISTORY+1))
         fi
         COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
-        while :
-        do
-          printf "\r"
-          printf "\033[1G$(yes " "|sed $SIZE'q'|tr -d '\n')"
-          printf "\033[1GConsole > ${COMMAND}"
-          read -s -N1 COMMAND2
-          if [[ ${COMMAND2} == $(echo -e "\004") ]];then
-            echo -e "\n\nExit.\033[0m"&&exit
-          fi
-          if [[ $(echo $COMMAND2|hexdump|head -n1|awk '{print $2}') == "000a" ]]&&[[ ${COMMAND2} != " " ]];then
-            echo
-            SHELL_CONSOLE_MAIN ${COMMAND}
-            HISTORY=0
-            break
-          fi
-          if [[ $(echo $COMMAND2|hexdump|head -n1|awk '{print $2}') == "0a7f" ]];then
-            COMMAND=${COMMAND%?}
-            continue
-          elif [[ $COMMAND2 == $(printf "\033") ]];then
-            read -s -N 2 COMMAND3
-            if [[ ${COMMAND3} == "[A" ]];then
-              if (($HISTORY <= ${HISTORY_LINES}));then
-                HISTORY=$(($HISTORY+1))
-              fi
-              COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
-              continue
-            elif [[ ${COMMAND3} == "[B" ]];then
-              if (($HISTORY >= 2));then
-                HISTORY=$(($HISTORY-1))
-              fi
-              COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
-              continue
-           else
-             continue
-           fi
-          else
-             COMMAND+=${COMMAND2}
-             continue
-          fi
-        done
+        continue
+      elif [[ ${COMMAND1} == "[B" ]];then
+        if (($HISTORY >= 2));then
+          HISTORY=$(($HISTORY-1))
+        fi
+        COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
         continue
       else
-        echo&&continue
+        continue
       fi
     else
-      COMMAND=${COMMAND0}
-      printf "\033[1GConsole > ${COMMAND}"
-      while :
-      do
-        read -N1 -s COMMAND1
-        if [[ ${COMMAND1} == $(printf "\033") ]];then
-          read -s -N 2 COMMAND1
-          HISTORY=0
-          if [[ ${COMMAND1} == "[A" ]];then
-            HISTORY_LINES=$(awk 'END{print NR}' $HOME/.shell_history)
-            HISTORY_LINES=$(( ${HISTORY_LINES}-1))
-            if (($HISTORY <= ${HISTORY_LINES} ));then
-              HISTORY=$(($HISTORY+1))
-            fi
-            COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
-            while :
-            do
-              printf "\r"
-              printf "\033[1G$(yes " "|sed $SIZE'q'|tr -d '\n')"
-              printf "\033[1GConsole > ${COMMAND}"
-              read -s -N1 COMMAND2
-              if [[ ${COMMAND2} == $(echo -e "\004") ]];then
-                echo -e "\n\nExit.\033[0m"&&exit
-              fi
-              if [[ $(echo $COMMAND2|hexdump|head -n1|awk '{print $2}') == "000a" ]]&&[[ ${COMMAND2} != " " ]];then
-                echo
-                SHELL_CONSOLE_MAIN ${COMMAND}
-                continue 3
-              fi
-              if [[ $(echo $COMMAND2|hexdump|head -n1|awk '{print $2}') == "0a7f" ]];then
-                COMMAND=${COMMAND%?}
-                continue
-              elif [[ $COMMAND2 == $(printf "\033") ]];then
-                read -s -N 2 COMMAND3
-                if [[ ${COMMAND3} == "[A" ]];then
-                  if (($HISTORY <= ${HISTORY_LINES}));then
-                    HISTORY=$(($HISTORY+1))
-                  fi
-                  COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
-                  continue
-              elif [[ ${COMMAND3} == "[B" ]];then
-                if (($HISTORY >= 2));then
-                  HISTORY=$(($HISTORY-1))
-                fi
-                  COMMAND=$(cat $HOME/.shell_history|tail -${HISTORY}|head -n1)
-                  continue
-               else
-                 continue
-               fi
-              else
-               COMMAND+=${COMMAND2}
-               continue
-              fi
-            done
-            continue
-          else
-            echo&&continue
-          fi
-        fi
-        if [[ ${COMMAND1} == $(echo -e "\004") ]];then
-          echo -e "\n\nExit.\033[0m"&&exit
-        fi
-        if [[ $(echo $COMMAND1|hexdump|head -n1|awk '{print $2}') == "000a" ]]&&[[ $COMMAND1 != " " ]];then
-          echo&&break
-        else
-          if [[ $(echo $COMMAND1|hexdump|head -n1|awk '{print $2}') == "0a7f" ]];then
-            COMMAND=${COMMAND%?}
-          else
-            COMMAND+=${COMMAND1}
-          fi
-          printf "\033[1G$(yes " "|sed $SIZE'q'|tr -d '\n')"&&printf "\033[1GConsole > ${COMMAND}"
-        fi
-      done
+      COMMAND+=${COMMAND0}
+      continue
     fi
-    SHELL_CONSOLE_MAIN ${COMMAND}
   done
 }
 ```
-什么你说看不懂？猫猫也看不懂自己写的这一段，因为屎山一旦形成，只有上帝知道这东西的原理。
-不过你只要知道这是一个死循环，会获取命令并跳转到SHELL_CONSOLE_MAIN进行解析和执行就是了。
+这段代码是优化过的，原来那段简直是黑历史喵！！！
+作用是获取命令并传递给SHELL_CONSOLE_MAIN函数进行解析。
 于是你只需要自己写一个SHELL_CONSOLE_MAIN函数，大概长这样(从termux-container v9复制过来的)：
 ```sh
 SHELL_CONSOLE_MAIN(){
